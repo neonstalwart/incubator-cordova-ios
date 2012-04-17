@@ -21,8 +21,6 @@
  under the License.
 */
 
-;(function() {
-
 // file: lib/scripts/require.js
 var require,
     define;
@@ -30,35 +28,39 @@ var require,
 (function () {
     var modules = {};
 
-    function build(module) {
-        var factory = module.factory;
-        module.exports = {};
-        delete module.factory;
-        factory(require, module.exports, module);
-        return module.exports;
+    if (typeof require === "undefined") {
+        function build(module) {
+            var factory = module.factory;
+            module.exports = {};
+            delete module.factory;
+            factory(require, module.exports, module);
+            return module.exports;
+        }
+
+        require = function (id) {
+            if (!modules[id]) {
+                throw "module " + id + " not found";
+            }
+            return modules[id].factory ? build(modules[id]) : modules[id].exports;
+        };
     }
 
-    require = function (id) {
-        if (!modules[id]) {
-            throw "module " + id + " not found";
-        }
-        return modules[id].factory ? build(modules[id]) : modules[id].exports;
-    };
-
-    define = function (id, factory) {
-        if (modules[id]) {
-            throw "module " + id + " already defined";
-        }
-
-        modules[id] = {
-            id: id,
-            factory: factory
+    if (typeof define === "undefined") {
+        define = function (id, factory) {
+            if (modules[id]) {
+                throw "module " + id + " already defined";
+            }
+    
+            modules[id] = {
+                id: id,
+                factory: factory
+            };
         };
-    };
-
-    define.remove = function (id) {
-        delete modules[id];
-    };
+    
+        define.remove = function (id) {
+            delete modules[id];
+        };
+    }
 
 })();
 
@@ -4406,10 +4408,9 @@ module.exports = _self;
 });
 
 
-window.cordova = require('cordova');
-
 // file: lib/scripts/bootstrap.js
-(function (context) {
+define("cordova/_bootstrap", function (require, exports, module) {
+//(function (context) {
     var channel = require("cordova/channel"),
         _self = {
             boot: function () {
@@ -4473,8 +4474,14 @@ window.cordova = require('cordova');
     if (window._nativeReady) {
         channel.onNativeReady.fire();
     }
+});
 
-}(window));
-
-
-})();
+if (define.amd) {
+    require(["cordova", "cordova/_bootstrap"], function (cordova) {
+        window.cordova = cordova;
+    });
+}
+else {
+    window.cordova = require("cordova");
+    require("cordova/bootstrap");
+}
